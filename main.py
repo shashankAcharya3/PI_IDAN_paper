@@ -182,11 +182,49 @@ def main():
         results.append({'Batch': b_id, 'Acc_Before': acc_before, 'Acc_After': acc_after})
         prev_base = new_base
 
+    # Collect detailed metrics for final evaluation
+    print("\n--- COMPUTING DETAILED METRICS (PR%, RC%, F1%) ---")
+    detailed_results = []
+    
+    for b_id in range(3, 11):
+        ds_eval = IDANDataset(df, batch_id=b_id, domain_label=0)
+        if len(ds_eval) < BATCH_SIZE:
+            continue
+        loader_eval = DataLoader(ds_eval, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
+        metrics = trainer.evaluate_detailed(loader_eval)
+        
+        from src.evaluator import format_metrics_table
+        print(f"\n=== Batch {b_id} ===")
+        print(format_metrics_table(metrics))
+        
+        detailed_results.append({
+            'Batch': b_id,
+            'Accuracy': metrics['accuracy'],
+            'Precision': metrics['precision'],
+            'Recall': metrics['recall'],
+            'F1': metrics['f1']
+        })
+
     res_df = pd.DataFrame(results)
-    print("\nFINAL RESULTS:")
+    print("\nFINAL RESULTS (Per-Batch Adaptation):")
     print(res_df.to_string(index=False))
-    print(f"AVG AFTER: {res_df['Acc_After'].mean():.2f}%")
     res_df.to_csv("results/final_accuracy.csv", index=False)
+    
+    # Save complete metrics
+    if detailed_results:
+        detailed_df = pd.DataFrame(detailed_results)
+        print("\nCOMPLETE METRICS (PR%, RC%, F1%):")
+        print(detailed_df.to_string(index=False))
+        
+        # Use CONSISTENT average from detailed metrics (drop_last=False, all samples)
+        avg_acc = detailed_df['Accuracy'].mean()
+        avg_pr = detailed_df['Precision'].mean()
+        avg_rc = detailed_df['Recall'].mean()
+        avg_f1 = detailed_df['F1'].mean()
+        print(f"\nAVERAGE: Acc={avg_acc:.2f}%, PR={avg_pr:.2f}%, RC={avg_rc:.2f}%, F1={avg_f1:.2f}%")
+        
+        detailed_df.to_csv("results/complete_metrics.csv", index=False)
+        print("Results saved to: results/complete_metrics.csv")
 
 if __name__ == "__main__":
     main()

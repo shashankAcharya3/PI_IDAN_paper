@@ -311,5 +311,10 @@ class PICDATrainer:
                 total += x.size(0)
         return 100 * correct / total
 
+    def evaluate_detailed(self, loader):
+        """Evaluate with complete metrics: Accuracy, Precision, Recall, F1"""
+        from src.evaluator import evaluate_detailed
+        return evaluate_detailed(self.encoder, self.classifier, loader, self.device, self.num_classes)
+
     def save_checkpoint(self, name):
         torch.save({'enc': self.encoder.state_dict(), 'cls': self.classifier.state_dict(), 'phy': self.physics_head.state_dict()}, os.path.join(self.save_dir, name))
